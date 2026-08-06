@@ -418,6 +418,38 @@ def render(ctx):
         L.append("</details>")
         L.append("")
 
+    # 집계 숫자만 내면 어느 항목이 판정되지 않았는지 알 수 없어,
+    # "앵커 규칙을 보강하라" 는 조치를 실행할 수 없다
+    if ctx["insufficient"]:
+        L.append("<details><summary>증거 부족으로 판정 못함 "
+                 + str(len(ctx["insufficient"])) + "건</summary>")
+        L.append("")
+        for r in ctx["insufficient"]:
+            it = ctx["active"][r["id"]]
+            L.append(f"- `{r['id']}` {it['title']}")
+            if r.get("reason"):
+                L.append(f"  - {r['reason']}")
+        L.append("")
+        L.append("같은 항목이 매번 여기 나오면 판정이 어려운 코드가 아니라 "
+                 "`anchors.yml` 의 앵커 목록이 부족한 것이다.")
+        L.append("")
+        L.append("</details>")
+        L.append("")
+
+    if ctx["unjudged"]:
+        L.append("<details><summary>미판정 " + str(len(ctx["unjudged"])) + "건</summary>")
+        L.append("")
+        L.append("**통과가 아니다.** 물어보지 않았거나 응답이 오지 않은 항목이다. "
+                 "로컬에서 `/verify` 를 돌리면 전부 판정된다.")
+        L.append("")
+        for i in ctx["unjudged"][:60]:
+            L.append(f"- `{i}` {ctx['active'][i]['title']}")
+        if len(ctx["unjudged"]) > 60:
+            L.append(f"- 외 {len(ctx['unjudged']) - 60}건")
+        L.append("")
+        L.append("</details>")
+        L.append("")
+
     counts = ctx["counts"]
     L.append("| verdict | 건수 |")
     L.append("|---|---:|")
@@ -558,6 +590,7 @@ def main():
     kept, suppressed = suppress_deferred(results, active)
     violations = [r for r in kept if r["verdict"] == "VIOLATION"]
     conflicting = [r for r in kept if r["verdict"] == "CONFLICTING_BASELINE"]
+    insufficient = [r for r in kept if r["verdict"] == "INSUFFICIENT_EVIDENCE"]
     new, existing = split_new(violations, added)
 
     counts = defaultdict(int)
@@ -573,7 +606,8 @@ def main():
         "rules": [r["id"] for r in rules], "fallback": fallback,
         "active": active, "active_n": len(active), "by_repo": by_repo,
         "stages": stages, "new": new, "existing": existing,
-        "conflicting": conflicting, "counts": counts,
+        "conflicting": conflicting, "insufficient": insufficient,
+        "unjudged": unjudged, "counts": counts,
         "missing_anchors": failed + missing_docs, "absent": absent, "suppressed": suppressed,
     }
     Path(args.out).write_text(render(ctx), encoding="utf-8")
