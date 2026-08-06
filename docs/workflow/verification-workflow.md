@@ -149,7 +149,8 @@ LGU-2/infra    docs/infra-review/        100건   인프라 결정이 코드에 
 변경 파일이 규칙을 트리거하고, 규칙이 어떤 항목을 켤지 정한다.
 
 ```
-**/domain/service/*.java   ->  DI PERF REL DPB EJ FUN MNT FLX TRD INF(1,2,8장)
+**/domain/service/*.java   ->  DI PERF REL DPB EJ FUN MNT FLX TRD INF(1,2,8장) SEC(1,2,4,6장)
+**/domain/repository/*.java ->  PERF DI JPA SEC(1,2장)
 **/domain/entity/*.java    ->  BE EC JPA DI CMP IDS INF(8장)
 **/domain/controller/*.java ->  SEC CMP API DPB EJ FUN IDS
 **/domain/client/**/*.java ->  REL DPB OBS INF(3장)
@@ -160,6 +161,11 @@ build.gradle               ->  MNT PERF INF(10장)
 ```
 
 567건 중 **464건**이 어떤 규칙엔가 걸린다.
+
+`SEC` 를 service 와 repository 에도 켜는 이유는, 소유권 검증과 쿼리 조립의 판정 대상이
+컨트롤러가 아니라 그 두 곳이기 때문이다. 컨트롤러만 트리거로 두면
+**컨트롤러를 건드리지 않고 서비스 로직에 권한 검사 없는 조회를 추가할 때 아무도 지적하지 않는다.**
+3장(입력 검증)은 controller 가, 5장(감사 이력)은 entity 와 migration 이 맡으므로 여기서는 제외한다.
 나머지 103건은 `INC` 37, `OPS` 34, `PRE` 13 등으로 **G-AUDIT과 G-RELEASE 소관이라 PR로 트리거되지 않는 것이 정상**이다.
 
 수치의 재현 방법은 [qa-llm-verification.md](../software-quality/qa-llm-verification.md) 9.2절에 있다.
