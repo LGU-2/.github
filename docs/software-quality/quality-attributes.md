@@ -64,6 +64,7 @@
 | 인시던트 대응과 복구 | [qa-incident-response.md](./qa-incident-response.md) | 매우 높음 |
 | 속성 간 트레이드오프 | [qa-tradeoffs.md](./qa-tradeoffs.md) | 설계 판단 기준 |
 | LLM 기반 품질 검증 설계 | [qa-llm-verification.md](./qa-llm-verification.md) | 검증 자동화 |
+| 검증 워크플로 (실행 순서) | [../workflow/verification-workflow.md](../workflow/verification-workflow.md) | 참조용 |
 
 ### 별도 문서를 두지 않은 특성
 
