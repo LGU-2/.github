@@ -78,6 +78,10 @@ PR 을 열거나 push 하면 자동으로 돈다. 할 일은 없다.
 | CI | PR 의 리뷰 코멘트 (하나가 계속 갱신된다) |
 | CI | Actions 실행 화면의 **Summary** |
 
+**CI 결과는 파일로 저장하지 않는다.** PR 코멘트와 Actions Summary 에만 남는다.
+같은 코멘트를 갱신하므로 이력이 남지 않고, Actions 로그는 보존 기간이 지나면 사라진다.
+되짚어 볼 필요가 있으면 로컬에서 `/verify` 를 돌려 기록을 남긴다.
+
 ```
 backend/docs/llm-review/
   devjohnpark_20260806-174500_llm-review.md
