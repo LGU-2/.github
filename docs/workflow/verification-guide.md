@@ -69,6 +69,43 @@ PR 을 열거나 push 하면 자동으로 돈다. 할 일은 없다.
 기존 부채            접어 둔다. 이 PR 의 책임이 아니다
 ```
 
+## 결과가 어디에 나오나
+
+| 어디서 돌렸나 | 결과 |
+|---|---|
+| 로컬 | 터미널 화면 |
+| 로컬 | `backend/docs/llm-review/<계정>_<YYYYMMDD-HHMMSS>_llm-review.md` |
+| CI | PR 의 리뷰 코멘트 (하나가 계속 갱신된다) |
+| CI | Actions 실행 화면의 **Summary** |
+
+```
+backend/docs/llm-review/
+  devjohnpark_20260806-174500_llm-review.md
+  devjohnpark_20260806-181203_llm-review.md
+  teammate_20260807-093011_llm-review.md
+```
+
+로컬 기록 파일은 화면에 나온 것과 같은 내용에 머리말이 붙는다.
+어느 커밋을, 어느 시점의 점검 항목으로 판정했는지가 들어 있어 나중에 다시 읽을 수 있다.
+
+```markdown
+---
+검증: G-LOCAL
+계정: devjohnpark
+시각: 2026-08-06T08:45:00Z
+커밋: bd07e1ac15f2ca4257ecf7b976745c0f5d79d7eb
+범위: HEAD~1..HEAD
+기준 저장소:
+  common: 61ad5797c7c0fc809ed504bf2073271f5e849841
+  infra: 3e05b7f9933d654c20a30b3b64593252ab9a8501
+매칭 규칙: [service]
+활성 항목: 182 (backend 79, common 88, infra 15)
+---
+```
+
+이 디렉터리는 **커밋한다.** 로컬 검증은 재량이라 안 돌려도 아무 일이 없고, 기록이 남아야 돌렸는지가 구분된다.
+파일명에 계정과 초 단위 시각이 들어가므로 팀원끼리 충돌하지 않는다.
+
 ## 결과 읽기
 
 | 값 | 뜻 | 할 일 |
