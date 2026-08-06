@@ -1,0 +1,136 @@
+# G-PR 본체 (재사용 워크플로)
+#
+# 각 저장소의 .github/workflows/llm-verify.yml 이 이것을 호출한다.
+# 실행 순서의 설명은 docs/workflow/verification-workflow.md 에 있다.
+#
+# 이 게이트는 병합을 막지 않는다. 재현율이 측정되지 않았기 때문이다.
+# 차단은 G-BUILD(커버리지, Blocker)와 G-RELEASE 가 한다.
+
+name: LLM 검증 (G-PR)
+
+on:
+  workflow_call:
+    inputs:
+      common_repo:
+        type: string
+        default: LGU-2/.github
+      infra_repo:
+        type: string
+        default: LGU-2/infra
+    secrets:
+      GEMINI_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # --- 3단계: 체크아웃 (판정 대상) ---
+      - name: 판정 대상 저장소
+        uses: actions/checkout@v4
+        with:
+          path: target
+          fetch-depth: 0
+
+      - name: 범위와 기준 시점 산출          # 4단계
+        id: scope
+        working-directory: target
+        run: |
+          BASE=$(git merge-base origin/${{ github.base_ref }} HEAD)
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          echo "base=$BASE" >> $GITHUB_OUTPUT
+          echo "head=$HEAD_SHA" >> $GITHUB_OUTPUT
+          # 기준 저장소는 시점으로 고정한다 (qa-llm-verification.md 2.2절).
+          # PR 이 갈라져 나온 시점의 점검 항목으로 판정해야, 심사 중 기준이 바뀌어
+          # 고치지 않은 코드에 새 위반이 생기는 일을 막는다.
+          echo "at=$(git show -s --format=%cI $BASE)" >> $GITHUB_OUTPUT
+
+      # --- 3단계: 체크아웃 (판정 기준) ---
+      - name: 기준 저장소 common
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.common_repo }}
+          path: common
+          fetch-depth: 0
+
+      - name: common 을 기준 시점으로 고정
+        working-directory: common
+        run: |
+          SHA=$(git rev-list -1 --before="${{ steps.scope.outputs.at }}" origin/HEAD)
+          git checkout -q "$SHA"
+          echo "common @ $SHA"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet pyyaml
+
+      # --- 5, 6단계: 앵커 규칙 매칭 ---
+      # infra 체크아웃 여부를 여기서 정한다. needs_baseline_values 가 걸리지 않으면 받지 않는다.
+      - name: 앵커 규칙 매칭
+        id: match
+        run: |
+          python common/.github/llm-verify/run.py --mode match \
+            --backend target \
+            --base ${{ steps.scope.outputs.base }} \
+            --head ${{ steps.scope.outputs.head }}
+
+      # --- 10단계: 확정값이 필요할 때만 ---
+      - name: 확정값 저장소 infra
+        if: steps.match.outputs.needs_baseline == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.infra_repo }}
+          path: infra
+          fetch-depth: 0
+
+      - name: infra 를 기준 시점으로 고정
+        if: steps.match.outputs.needs_baseline == 'true'
+        working-directory: infra
+        run: |
+          SHA=$(git rev-list -1 --before="${{ steps.scope.outputs.at }}" origin/HEAD)
+          git checkout -q "$SHA"
+          echo "infra @ $SHA"
+
+      # --- 7~16단계 ---
+      - name: 판정
+        id: judge
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python common/.github/llm-verify/run.py --mode judge \
+            --backend target --common common \
+            --infra "${{ steps.match.outputs.needs_baseline == 'true' && 'infra' || '' }}" \
+            --base ${{ steps.scope.outputs.base }} \
+            --head ${{ steps.scope.outputs.head }} \
+            --out verify-out.md
+
+      # --- 16단계: 출력 ---
+      # 같은 코멘트를 갱신한다. push 마다 새 코멘트를 달면 6장이 경계한 소음이 된다.
+      - name: 리뷰 코멘트
+        if: always() && hashFiles('verify-out.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          ID=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+                 --jq '[.[] | select(.body | startswith("<!-- llm-verify -->"))][0].id')
+          if [ -n "$ID" ] && [ "$ID" != "null" ]; then
+            gh api --method PATCH "repos/$REPO/issues/comments/$ID" \
+              -F body=@verify-out.md >/dev/null
+            echo "코멘트 갱신 $ID"
+          else
+            gh api --method POST "repos/$REPO/issues/$PR/comments" \
+              -F body=@verify-out.md >/dev/null
+            echo "코멘트 생성"
+          fi
+
+      - name: 요약
+        if: always()
+        run: cat verify-out.md >> $GITHUB_STEP_SUMMARY || true

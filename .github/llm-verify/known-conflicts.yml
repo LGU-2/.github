@@ -1,0 +1,110 @@
+# 알려진 확정값 모순
+#
+# 확정값 문서끼리 같은 사실을 다르게 적고 있는 것을 기록한다.
+# 설계 근거는 qa-llm-verification.md 7.2절에 있다.
+#
+# 이 파일이 있으면 게이트는 목록에 있는 모순을 매 PR 마다 다시 지적하지 않는다.
+# 목록에 없는 모순이 발견되면 새로 발견된 것이므로 보고한다.
+#
+# status
+#   unresolved   문서를 고쳐야 한다. 판정은 CONFLICTING_BASELINE 으로 유보한다
+#   intentional  모순이 아니다. 점검 항목 층의 일반론에서 이 팀이 의도적으로 이탈한 것이다
+#   resolved     해소되었다. 근거 커밋을 남기고 다음 분기 점검에서 제거한다
+#
+# 분기 점검에서 이 목록의 길이와 각 항목의 경과 기간을 함께 본다.
+# unresolved 가 줄지 않으면 게이트가 유보하는 항목이 계속 늘어난다는 뜻이다.
+
+version: 1
+source: common
+
+conflicts:
+  - id: readiness-include-db
+    topic: readiness 포함 대상
+    status: unresolved
+    since: 2026-08-05
+    affects: [REL-5-01, REL-5-02, INF-4-01]
+    sources:
+      - doc: 백엔드공통_앱과DB_장애대응구조.md
+        section: "1.1절"
+        value: "db 포함은 잘못이며 철회. 공유 의존성 제외"
+      - doc: 백엔드공통_기술스택_확정문서.md
+        section: "4.2절"
+        value: "readiness: include: db, diskSpace"
+    note: >
+      가장 위험한 항목이다. 철회된 설계가 다른 문서에 살아남아 있고
+      그 문서가 실행 가능한 yaml 형태라 그대로 복사될 가능성이 높다.
+      공유 의존성을 readiness 에 넣으면 DB 장애 시 전 인스턴스가 동시에
+      대상 그룹에서 빠지는데, 두 문서가 공통으로 경계한 실패 양상이다.
+
+  - id: deploy-capacity
+    topic: 배포 중 확보 용량
+    status: unresolved
+    since: 2026-08-05
+    affects: [OPS-1-07, INF-2-01]
+    sources:
+      - doc: 백엔드공통_장애대응목표와_아키텍처결정.md
+        section: "7.1절"
+        value: "50%"
+      - doc: 백엔드공통_무중단배포_롤링.md
+        section: "1절"
+        value: "100%"
+      - doc: 백엔드공통_시스템디자인_종합.md
+        section: "7절 표"
+        value: "100%"
+    note: >
+      같은 문서 안에서도 어긋난다. 시스템 디자인 종합 7절 표는 100% 인데
+      7.3절 본문은 "용량이 절반이 되는데" 다.
+
+  - id: deploy-duration
+    topic: 배포 소요 시간
+    status: unresolved
+    since: 2026-08-05
+    affects: [OPS-2-06]
+    sources:
+      - doc: 백엔드공통_장애대응목표와_아키텍처결정.md
+        section: "7.1절"
+        value: "3~4분"
+      - doc: 백엔드공통_무중단배포_롤링.md
+        section: "1절"
+        value: "6~8분"
+
+  - id: mixed-window
+    topic: 구 버전과 신 버전 혼재 구간
+    status: unresolved
+    since: 2026-08-05
+    affects: [OPS-2-06, CMP-3-01, INF-6-01]
+    sources:
+      - doc: 백엔드공통_장애대응목표와_아키텍처결정.md
+        section: "7.1절"
+        value: "약 2분"
+      - doc: 백엔드공통_장애대응목표와_아키텍처결정.md
+        section: "7.4절"
+        value: "약 3분"
+      - doc: 백엔드공통_무중단배포_롤링.md
+        section: "8절"
+        value: "약 1분"
+    note: >
+      혼재 구간의 길이는 스키마 확장 후 축소에서 축소를 언제 해도 되는지를 정한다.
+      값이 셋이면 안전한 최소 대기 시간을 정할 수 없다.
+
+  # 아래는 모순이 아니다. 고칠 대상이 아니라 기록할 대상이다.
+  # 기록해 두지 않으면 나중에 점검 항목 문서를 근거로 확정값이 틀렸다며 되돌리는 일이 생긴다.
+
+  - id: readiness-shared-dependency
+    topic: readiness 구성 원칙
+    status: intentional
+    since: 2026-08-05
+    affects: [REL-5-01]
+    sources:
+      - doc: qa-reliability.md
+        section: "5장"
+        value: "의존성 상태는 readiness 에서 본다 (일반론)"
+      - doc: 백엔드공통_앱과DB_장애대응구조.md
+        section: "1.1절"
+        value: "공유 의존성을 readiness 에서 제외 (이 팀의 확정 결정)"
+    decision: INF-16
+    note: >
+      2.1절의 두 층 관계에 따라 확정값이 이긴다.
+      공유 의존성 장애 시 전 인스턴스가 동시에 대상 그룹에서 빠져 상황이 악화되므로
+      제외한다는 이유가 명시되어 있고 ADR 에 되돌릴 수 없는 결정으로 기록되어 있다.
+      REL-5-01 은 이 저장소 코드에 대해서는 INF-4-01 로 판정한다.

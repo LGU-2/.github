@@ -1,0 +1,586 @@
+#!/usr/bin/env python3
+"""
+G-PR 실행기.
+
+verification-workflow.md 의 "진입점부터의 실행 순서" 4~16 단계를 수행한다.
+워크플로 yml 은 체크아웃과 코멘트만 하고, 판정 파이프라인은 전부 여기 있다.
+
+두 모드로 나뉜다.
+  match  앵커 규칙만 매칭해 needs_baseline 을 내놓는다. infra 체크아웃 여부를 정하기 위해서다
+  judge  4~16 단계 전체
+
+설계 문서와 다른 점이 하나 있다.
+13단계(기준선 판정)는 base 커밋에 같은 판정을 돌려 신규 위반과 기존 부채를 가르도록 되어 있으나,
+여기서는 LLM 호출을 두 배로 늘리지 않기 위해 다르게 구현했다.
+판정 근거의 파일과 줄 번호가 이 PR 이 추가한 줄에 있는지를 diff 로 대조한다.
+결정론적이고 호출이 늘지 않는 대신, 추가된 줄 밖에 근거가 있는 신규 위반(예: 줄을 지워서 생긴 위반)은
+기존 부채로 분류된다. 그 한계를 알고 쓴다.
+"""
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from collections import defaultdict
+from pathlib import Path
+
+import yaml
+
+MODEL = "gemini-2.5-flash"
+ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
+
+VERDICTS = ["VIOLATION", "OK", "NOT_APPLICABLE", "INSUFFICIENT_EVIDENCE", "CONFLICTING_BASELINE"]
+
+
+# --- 유틸 ---------------------------------------------------------------
+
+def git(cwd, *args):
+    r = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)} 실패: {r.stderr.strip()}")
+    return r.stdout
+
+
+def load_yaml(path):
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def items_of(path):
+    d = load_yaml(path)
+    return d["items"] if isinstance(d, dict) else d
+
+
+def glob_re(pattern):
+    """`**/` 를 임의 깊이로, `*` 를 한 경로 조각 안으로 해석한다."""
+    out, i = "", 0
+    while i < len(pattern):
+        if pattern.startswith("**/", i):
+            out += "(?:.*/)?"
+            i += 3
+        elif pattern.startswith("**", i):
+            out += ".*"
+            i += 2
+        elif pattern[i] == "*":
+            out += "[^/]*"
+            i += 1
+        elif pattern[i] == "?":
+            out += "[^/]"
+            i += 1
+        else:
+            out += re.escape(pattern[i])
+            i += 1
+    return re.compile("^" + out + "$")
+
+
+def matches(path, patterns):
+    return any(glob_re(p).match(path) for p in patterns)
+
+
+def prefix_of(item_id):
+    return item_id.rsplit("-", 2)[0]
+
+
+# --- 4단계: 범위 산출 -----------------------------------------------------
+
+def changed_files(repo, base, head):
+    out = git(repo, "diff", "--name-only", f"{base}...{head}")
+    return [l for l in out.splitlines() if l.strip()]
+
+
+def unified_diff(repo, base, head):
+    return git(repo, "diff", "--unified=3", f"{base}...{head}")
+
+
+def added_lines(diff_text):
+    """파일별로 이 PR 이 추가한 줄 번호 집합. 13단계 대체 구현이 쓴다."""
+    result = defaultdict(set)
+    path, lineno = None, 0
+    for line in diff_text.splitlines():
+        if line.startswith("+++ b/"):
+            path = line[6:]
+        elif line.startswith("@@"):
+            m = re.search(r"\+(\d+)", line)
+            lineno = int(m.group(1)) if m else 0
+        elif path and line.startswith("+") and not line.startswith("+++"):
+            result[path].add(lineno)
+            lineno += 1
+        elif path and not line.startswith("-"):
+            lineno += 1
+    return result
+
+
+# --- 5, 6단계: 앵커 규칙 매칭 ----------------------------------------------
+
+def match_rules(anchors, files):
+    matched = [r for r in anchors["rules"] if matches_any(files, r["trigger"])]
+    if matched:
+        return matched, False
+    fallback = dict(anchors["defaults"]["on_no_match"])
+    fallback.setdefault("id", "on_no_match")
+    fallback.setdefault("anchors", [])
+    fallback["needs_baseline_values"] = False
+    return [fallback], True
+
+
+def matches_any(files, patterns):
+    return any(matches(f, patterns) for f in files)
+
+
+# --- 7, 8단계: 레지스트리 로드와 필터 ---------------------------------------
+
+def active_items(rules, registries):
+    """활성 조건을 만족하는 항목. 여러 규칙에 걸리면 합집합이다."""
+    active = {}
+    for rule in rules:
+        a = rule.get("activate") or {}
+        prefixes = set(a.get("prefixes") or [])
+        levels = set(a.get("levels") or [])
+        chapters = a.get("chapters") or {}
+        for repo, items in registries.items():
+            for it in items:
+                p = prefix_of(it["id"])
+                if p not in prefixes:
+                    continue
+                if levels and it.get("level") not in levels:
+                    continue
+                if p in chapters and it.get("ch") not in chapters[p]:
+                    continue
+                active.setdefault(it["id"], dict(it, repo=repo))
+    return active
+
+
+# --- 9~12단계: 입력 수집 ---------------------------------------------------
+
+def read_files(root, patterns, limit_bytes=400_000):
+    """
+    앵커 파일을 읽는다. 결과를 셋으로 나눈다.
+
+    got     읽은 파일
+    absent  패턴에 해당하는 파일이 아예 없다. 이것은 실패가 아니라 부재 판정의 근거다
+    failed  있는데 못 읽었다. 이쪽이 INSUFFICIENT_EVIDENCE 사유다
+
+    둘을 구분하지 않으면 "SecurityConfig 가 없다" 는 판정이 "증거 부족" 으로 뭉개진다.
+    점검 항목의 대부분이 무언가의 부재를 묻기 때문에 이 구분이 게이트의 실효를 좌우한다.
+    """
+    root = Path(root)
+    got, absent, failed, total = {}, [], [], 0
+    for pattern in patterns:
+        hits = [f for f in sorted(root.glob(pattern)) if f.is_file()]
+        if not hits:
+            absent.append(pattern)
+            continue
+        for f in hits:
+            rel = str(f.relative_to(root))
+            if rel in got:
+                continue
+            try:
+                text = f.read_text(encoding="utf-8", errors="replace")
+            except OSError as e:
+                failed.append(f"{rel} ({e})")
+                continue
+            if total + len(text) > limit_bytes:
+                failed.append(f"{rel} (용량 상한 초과)")
+                continue
+            got[rel] = text
+            total += len(text)
+    return got, absent, failed
+
+
+def collect_docs(active, roots):
+    """활성 항목이 속한 판정 기준 문서만 읽는다."""
+    doc_dirs = {
+        "common": Path(roots["common"]) / "docs" / "software-quality",
+        "backend": Path(roots["backend"]) / "docs" / "code-architecture",
+        "infra": Path(roots["infra"] or ".") / "docs" / "infra-review",
+    }
+    wanted = defaultdict(set)
+    for it in active.values():
+        wanted[it["repo"]].add(it["doc"])
+    docs, missing = {}, []
+    for repo, names in wanted.items():
+        for name in sorted(names):
+            path = doc_dirs[repo] / name
+            if path.is_file():
+                docs[f"{repo}/{name}"] = path.read_text(encoding="utf-8", errors="replace")
+            else:
+                missing.append(f"{repo}/{name}")
+    return docs, missing
+
+
+def conflict_map(path):
+    """항목 ID -> 모순 정보. unresolved 만 판정을 유보시킨다."""
+    if not Path(path).is_file():
+        return {}, []
+    data = load_yaml(path)
+    by_item, intentional = defaultdict(list), []
+    for c in data.get("conflicts", []):
+        if c.get("status") == "unresolved":
+            for item_id in c.get("affects", []):
+                by_item[item_id].append(c)
+        elif c.get("status") == "intentional":
+            intentional.append(c)
+    return by_item, intentional
+
+
+# --- 14, 15단계: LLM 호출 --------------------------------------------------
+
+SYSTEM = """너는 웹 백엔드 코드 리뷰어다. 주어진 점검 항목 하나하나에 대해 판정한다.
+
+규칙
+1. 요청받은 모든 항목 ID 에 대해 정확히 하나씩 답한다. 빼거나 더하지 않는다.
+2. 근거 없이 OK 를 내지 않는다. 판정에 필요한 파일을 못 봤으면 INSUFFICIENT_EVIDENCE 다.
+3. 변경과 무관한 항목은 NOT_APPLICABLE 이다. 무리해서 위반을 만들지 않는다.
+4. VIOLATION 은 file 과 line 을 반드시 채운다. 못 채우면 INSUFFICIENT_EVIDENCE 다.
+5. 판정 기준은 첨부한 문서 본문이다. 항목 제목만 보고 일반론으로 판정하지 않는다.
+6. CONFLICTING_BASELINE 으로 표시된 항목은 그대로 CONFLICTING_BASELINE 으로 답하고 양쪽 값을 적는다.
+7. 앵커 파일은 diff 에 없어도 첨부된 것이다. "저장소에 존재하지 않는 경로" 목록은
+   검색 실패가 아니라 부재의 확인이므로, 무언가가 없다는 판정의 근거로 그대로 쓴다.
+8. 한국어로 답한다. reason 과 fix 는 각각 한 문장으로 쓴다.
+"""
+
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        "results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "verdict": {"type": "string", "enum": VERDICTS},
+                    "file": {"type": "string"},
+                    "line": {"type": "integer"},
+                    "reason": {"type": "string"},
+                    "fix": {"type": "string"},
+                },
+                "required": ["id", "verdict"],
+            },
+        }
+    },
+    "required": ["results"],
+}
+
+
+def build_prompt(items, diff, anchor_files, absent, docs, conflicts):
+    parts = ["# 판정할 점검 항목\n"]
+    for it in items:
+        mark = ""
+        if it["id"] in conflicts:
+            vals = "; ".join(
+                f"{s['doc']} {s.get('section','')}: {s['value']}"
+                for c in conflicts[it["id"]] for s in c["sources"]
+            )
+            mark = f"  [확정값 모순 - CONFLICTING_BASELINE 으로 답할 것] {vals}"
+        parts.append(f"- {it['id']} ({it['level']}) {it['title']}{mark}")
+
+    parts.append("\n# 변경 내용 (판정 대상)\n```diff\n" + diff + "\n```")
+
+    parts.append("\n# 앵커 파일 (diff 에 없어도 첨부된 것. 부재 판정의 근거)\n")
+    for path, text in anchor_files.items():
+        parts.append(f"## {path}\n```\n{text}\n```")
+
+    if absent:
+        parts.append(
+            "\n# 저장소에 존재하지 않는 경로\n"
+            "아래 패턴에 해당하는 파일은 저장소 전체를 뒤져도 없다. 검색 실패가 아니라 부재다.\n"
+            "이 사실을 무언가가 없다는 판정의 근거로 쓴다. 증거 부족으로 처리하지 않는다.\n"
+        )
+        for p in absent:
+            parts.append(f"- `{p}` 없음")
+
+    parts.append("\n# 판정 기준 본문\n")
+    for name, text in docs.items():
+        parts.append(f"## {name}\n{text}")
+
+    return "\n".join(parts)
+
+
+def call_gemini(api_key, prompt, expected_ids):
+    body = {
+        "systemInstruction": {"parts": [{"text": SYSTEM}]},
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0,
+            "responseMimeType": "application/json",
+            "responseSchema": SCHEMA,
+            "maxOutputTokens": 65536,
+        },
+    }
+    req = urllib.request.Request(
+        ENDPOINT.format(MODEL) + f"?key={api_key}",
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=600) as resp:
+            data = json.load(resp)
+    except urllib.error.HTTPError as e:
+        return None, f"HTTP {e.code}: {e.read().decode()[:300]}"
+    except Exception as e:
+        return None, f"호출 실패: {e}"
+
+    cand = (data.get("candidates") or [{}])[0]
+    finish = cand.get("finishReason")
+    if finish not in (None, "STOP"):
+        return None, f"finishReason={finish}"
+
+    try:
+        text = cand["content"]["parts"][0]["text"]
+        results = json.loads(text)["results"]
+    except Exception as e:
+        return None, f"파싱 실패: {e}"
+
+    usage = data.get("usageMetadata", {})
+    seen = {r["id"] for r in results}
+    ok = seen == set(expected_ids)
+    detail = "" if ok else f"응답 {len(seen)} / 요청 {len(expected_ids)}"
+    return {"results": results, "usage": usage, "complete": ok, "detail": detail}, None
+
+
+# --- 16단계: 필터링과 출력 -------------------------------------------------
+
+def suppress_deferred(results, active):
+    """defers_to 대상이 위반이면 일반 항목은 발화하지 않는다."""
+    violating = {r["id"] for r in results if r["verdict"] == "VIOLATION"}
+    kept, suppressed = [], []
+    for r in results:
+        target = active.get(r["id"], {}).get("defers_to") or []
+        if r["verdict"] == "VIOLATION" and any(t in violating for t in target):
+            suppressed.append(r)
+        else:
+            kept.append(r)
+    return kept, suppressed
+
+
+def split_new(results, added):
+    """13단계 대체 구현. 근거 줄이 추가된 줄이면 이 PR 이 만든 것으로 본다."""
+    new, existing = [], []
+    for r in results:
+        f, ln = r.get("file"), r.get("line")
+        if f and ln and ln in added.get(f, set()):
+            new.append(r)
+        else:
+            existing.append(r)
+    return new, existing
+
+
+def render(ctx):
+    L = ["<!-- llm-verify -->", "## LLM 검증 (G-PR)", ""]
+    L.append(f"매칭된 규칙 `{'`, `'.join(ctx['rules'])}`" + ("  (기본 규칙)" if ctx["fallback"] else ""))
+    L.append(f"활성 항목 **{ctx['active_n']}건**  "
+             f"(backend {ctx['by_repo']['backend']}, common {ctx['by_repo']['common']}, infra {ctx['by_repo']['infra']})")
+    L.append("")
+
+    for stage, info in ctx["stages"].items():
+        if info["error"]:
+            L.append(f"- {stage}단계 **실패**: {info['error']}  -> 해당 항목 `UNJUDGED`")
+        elif not info["complete"]:
+            L.append(f"- {stage}단계 부분 응답: {info['detail']}  -> 누락분 `UNJUDGED`")
+        else:
+            L.append(f"- {stage}단계 완료 {info['n']}건")
+    L.append("")
+
+    if ctx["new"]:
+        L.append(f"### 이 PR 이 만든 위반 {len(ctx['new'])}건")
+        L.append("")
+        for r in ctx["new"]:
+            it = ctx["active"][r["id"]]
+            L.append(f"**`{r['id']}`** {it['title']}")
+            L.append(f"- `{r.get('file')}:{r.get('line')}`")
+            L.append(f"- {r.get('reason','')}")
+            if r.get("fix"):
+                L.append(f"- 고치기: {r['fix']}")
+            L.append("")
+    else:
+        L.append("### 이 PR 이 만든 위반 없음")
+        L.append("")
+
+    if ctx["existing"]:
+        L.append("<details><summary>기존 부채 " + str(len(ctx["existing"])) + "건</summary>")
+        L.append("")
+        for r in ctx["existing"]:
+            L.append(f"- `{r['id']}` {ctx['active'][r['id']]['title']}  `{r.get('file') or '-'}`")
+        L.append("")
+        L.append("</details>")
+        L.append("")
+
+    if ctx["conflicting"]:
+        L.append("<details><summary>확정값 모순으로 유보 " + str(len(ctx["conflicting"])) + "건</summary>")
+        L.append("")
+        for r in ctx["conflicting"]:
+            L.append(f"- `{r['id']}` {r.get('reason','')}")
+        L.append("")
+        L.append("</details>")
+        L.append("")
+
+    counts = ctx["counts"]
+    L.append("| verdict | 건수 |")
+    L.append("|---|---:|")
+    for v in VERDICTS + ["UNJUDGED"]:
+        L.append(f"| `{v}` | {counts.get(v, 0)} |")
+    L.append("")
+
+    if ctx["absent"]:
+        L.append("저장소에 없는 앵커 경로 " + str(len(ctx["absent"]))
+                 + "건 (부재 판정의 근거로 썼다): "
+                 + ", ".join(f"`{p}`" for p in ctx["absent"][:8]))
+        L.append("")
+    if ctx["missing_anchors"]:
+        L.append("**읽지 못한 앵커** " + ", ".join(f"`{m}`" for m in ctx["missing_anchors"][:10])
+                 + "  -> 이것에 의존한 항목은 `INSUFFICIENT_EVIDENCE` 다")
+        L.append("")
+    if ctx["suppressed"]:
+        L.append(f"`defers_to` 로 억제된 중복 지적 {len(ctx['suppressed'])}건")
+        L.append("")
+
+    L.append("---")
+    L.append("이 게이트는 **병합을 막지 않는다.** 재현율이 측정되지 않았기 때문이다. "
+             "차단은 G-BUILD(커버리지, Blocker)와 G-RELEASE 가 한다.")
+    return "\n".join(L)
+
+
+# --- 진입점 ---------------------------------------------------------------
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--mode", choices=["match", "judge"], required=True)
+    ap.add_argument("--backend", required=True)
+    ap.add_argument("--common")
+    ap.add_argument("--infra", default="")
+    ap.add_argument("--base", required=True)
+    ap.add_argument("--head", required=True)
+    ap.add_argument("--out", default="verify-out.md")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="LLM 을 부르지 않고 무엇이 활성화되어 어떤 입력이 만들어지는지만 본다")
+    args = ap.parse_args()
+
+    anchors = load_yaml(Path(args.backend) / ".github/llm-verify/anchors.yml")
+    files = changed_files(args.backend, args.base, args.head)
+    rules, fallback = match_rules(anchors, files)
+    needs_baseline = any(r.get("needs_baseline_values") for r in rules)
+
+    if args.mode == "match":
+        out = os.environ.get("GITHUB_OUTPUT")
+        payload = {
+            "needs_baseline": "true" if needs_baseline else "false",
+            "rules": ",".join(r["id"] for r in rules),
+            "changed": str(len(files)),
+        }
+        if out:
+            with open(out, "a") as f:
+                for k, v in payload.items():
+                    f.write(f"{k}={v}\n")
+        print(json.dumps(payload, ensure_ascii=False))
+        return 0
+
+    roots = {"backend": args.backend, "common": args.common, "infra": args.infra}
+    registries = {
+        "backend": items_of(Path(args.backend) / ".github/llm-verify/items.yml"),
+        "common": items_of(Path(args.common) / ".github/llm-verify/items.yml"),
+    }
+    if args.infra:
+        registries["infra"] = items_of(Path(args.infra) / ".github/llm-verify/items.yml")
+
+    active = active_items(rules, registries)
+    if not active:
+        Path(args.out).write_text("<!-- llm-verify -->\n활성 항목이 없다.\n", encoding="utf-8")
+        return 0
+
+    diff = unified_diff(args.backend, args.base, args.head)
+    added = added_lines(diff)
+
+    anchor_patterns = sorted({p for r in rules for p in (r.get("anchors") or [])})
+    anchor_files, absent, failed = read_files(args.backend, anchor_patterns)
+    docs, missing_docs = collect_docs(active, roots)
+    conflicts, _ = conflict_map(Path(args.common) / ".github/llm-verify/known-conflicts.yml")
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key and not args.dry_run:
+        print("GEMINI_API_KEY 가 없다", file=sys.stderr)
+        return 1
+
+    by_stage = defaultdict(list)
+    for it in active.values():
+        by_stage[it.get("ci_stage", 1)].append(it)
+
+    if args.dry_run:
+        print(f"매칭 규칙   {', '.join(r['id'] for r in rules)}"
+              + ("  (기본 규칙)" if fallback else ""))
+        print(f"변경 파일   {len(files)}건")
+        print(f"활성 항목   {len(active)}건")
+        for s in (1, 2):
+            print(f"  {s}단계    {len(by_stage.get(s, []))}건")
+        by_repo = defaultdict(int)
+        for it in active.values():
+            by_repo[it["repo"]] += 1
+        print(f"  저장소별  {dict(by_repo)}")
+        print(f"앵커 파일   읽음 {len(anchor_files)}, 부재 {len(absent)}, 실패 {len(failed)}")
+        print(f"기준 문서   {len(docs)}건" + (f", 못 읽음 {missing_docs}" if missing_docs else ""))
+        print(f"모순 유보   {len([i for i in active if i in conflicts])}건")
+        for s in (1, 2):
+            batch = by_stage.get(s, [])
+            if batch:
+                p = build_prompt(batch, diff, anchor_files if s == 1 else {}, absent, docs, conflicts)
+                print(f"프롬프트 {s}단계  {len(p):,}자 (대략 {len(p)//2:,} 토큰)")
+        return 0
+
+    results, stages = [], {}
+    stage1_ok = True
+    for stage in (1, 2):
+        batch = by_stage.get(stage, [])
+        if not batch:
+            continue
+        if stage == 2 and not stage1_ok:
+            stages[2] = {"error": "1단계가 온전하지 않아 건너뜀", "complete": False, "detail": "", "n": 0}
+            continue
+        ids = [i["id"] for i in batch]
+        prompt = build_prompt(batch, diff, anchor_files if stage == 1 else {}, absent, docs, conflicts)
+        resp, err = call_gemini(api_key, prompt, ids)
+        if err:
+            stages[stage] = {"error": err, "complete": False, "detail": "", "n": 0}
+            if stage == 1:
+                stage1_ok = False
+            continue
+        stages[stage] = {"error": None, "complete": resp["complete"],
+                         "detail": resp["detail"], "n": len(resp["results"])}
+        if stage == 1 and not resp["complete"]:
+            stage1_ok = False
+        results += [r for r in resp["results"] if r["id"] in active]
+
+    judged = {r["id"] for r in results}
+    unjudged = [i for i in active if i not in judged]
+
+    kept, suppressed = suppress_deferred(results, active)
+    violations = [r for r in kept if r["verdict"] == "VIOLATION"]
+    conflicting = [r for r in kept if r["verdict"] == "CONFLICTING_BASELINE"]
+    new, existing = split_new(violations, added)
+
+    counts = defaultdict(int)
+    for r in kept:
+        counts[r["verdict"]] += 1
+    counts["UNJUDGED"] = len(unjudged)
+
+    by_repo = defaultdict(int)
+    for it in active.values():
+        by_repo[it["repo"]] += 1
+
+    ctx = {
+        "rules": [r["id"] for r in rules], "fallback": fallback,
+        "active": active, "active_n": len(active), "by_repo": by_repo,
+        "stages": stages, "new": new, "existing": existing,
+        "conflicting": conflicting, "counts": counts,
+        "missing_anchors": failed + missing_docs, "absent": absent, "suppressed": suppressed,
+    }
+    Path(args.out).write_text(render(ctx), encoding="utf-8")
+    print(f"활성 {len(active)} / 판정 {len(judged)} / 위반 {len(violations)} "
+          f"(신규 {len(new)}) / 미판정 {len(unjudged)}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
