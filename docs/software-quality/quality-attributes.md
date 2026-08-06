@@ -64,6 +64,7 @@
 | 인시던트 대응과 복구 | [qa-incident-response.md](./qa-incident-response.md) | 매우 높음 |
 | 속성 간 트레이드오프 | [qa-tradeoffs.md](./qa-tradeoffs.md) | 설계 판단 기준 |
 | LLM 기반 품질 검증 설계 | [qa-llm-verification.md](./qa-llm-verification.md) | 검증 자동화 |
+| 미결정 값 | [pending-decisions.md](./pending-decisions.md) | 근거 없는 예시값 목록 |
 | 검증 실행 방법과 워크 플로우 | [LGU-2/be 의 docs/verification/](https://github.com/LGU-2/be/blob/main/docs/verification/verification-guide.md) | 사용 설명 |
 
 ### 별도 문서를 두지 않은 특성
