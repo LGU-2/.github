@@ -26,8 +26,8 @@ items:
   - {id: CMP-7-01, doc: qa-compatibility.md, ch: 7, level: 설계, gate: G-DESIGN, domains: [application], title: "리소스와 필드 명명이 API 전체에서 일관되는가"}
   - {id: CMP-7-02, doc: qa-compatibility.md, ch: 7, level: 프로세스, gate: G-AUDIT, domains: [application], title: "모든 메서드, 리소스, 필드에 문서가 있는가"}
   - {id: CMP-7-03, doc: qa-compatibility.md, ch: 7, level: 설계, gate: G-DESIGN, domains: [application], title: "오류 메시지가 해결 방향을 제시하는가"}
-  - {id: DI-2-01, doc: qa-data-integrity.md, ch: 2, level: 코드, gate: G-PR, domains: [database], title: "갱신 손실 가능성이 있는 흐름에 잠금을 적용했는가"}
-  - {id: DI-2-02, doc: qa-data-integrity.md, ch: 2, level: 설계, gate: G-DESIGN, domains: [database], title: "충돌 빈도에 맞는 잠금 방식을 골랐는가"}
+  - {id: DI-2-01, doc: qa-data-integrity.md, ch: 2, level: 코드, gate: G-PR, domains: [database], defers_to: [INF-1-04, INF-1-05], title: "갱신 손실 가능성이 있는 흐름에 잠금을 적용했는가"}
+  - {id: DI-2-02, doc: qa-data-integrity.md, ch: 2, level: 설계, gate: G-DESIGN, domains: [database], defers_to: [INF-1-08], title: "충돌 빈도에 맞는 잠금 방식을 골랐는가"}
   - {id: DI-2-03, doc: qa-data-integrity.md, ch: 2, level: 설계, gate: G-DESIGN, domains: [database], title: "잠금 획득 순서가 일정해 교착 상태(deadlock)를 유발하지 않는가"}
   - {id: DI-2-04, doc: qa-data-integrity.md, ch: 2, level: 코드, gate: G-PR, domains: [database], title: "낙관적 잠금 실패 시의 처리(재시도 또는 안내)가 정의되어 있는가"}
   - {id: DI-3-01, doc: qa-data-integrity.md, ch: 3, level: 설계, gate: G-DESIGN, domains: [database], title: "유일성이 필요한 값에 UNIQUE 제약이 있는가"}
@@ -36,7 +36,7 @@ items:
   - {id: DI-3-04, doc: qa-data-integrity.md, ch: 3, level: 설계, gate: G-DESIGN, domains: [database], title: "NOT NULL이 필요한 컬럼에 지정되어 있는가"}
   - {id: DI-4-01, doc: qa-data-integrity.md, ch: 4, level: 설계, gate: G-DESIGN, domains: [database], title: "트랜잭션 범위가 비즈니스 단위와 일치하는가"}
   - {id: DI-4-02, doc: qa-data-integrity.md, ch: 4, level: 코드, gate: G-PR, domains: [database], title: "트랜잭션 안에서 외부 API를 호출하지 않는가"}
-  - {id: DI-4-03, doc: qa-data-integrity.md, ch: 4, level: 코드, gate: G-PR, domains: [database], title: "트랜잭션이 필요 이상으로 길지 않은가"}
+  - {id: DI-4-03, doc: qa-data-integrity.md, ch: 4, level: 코드, gate: G-PR, domains: [database], defers_to: [INF-1-07], title: "트랜잭션이 필요 이상으로 길지 않은가"}
   - {id: DI-6-01, doc: qa-data-integrity.md, ch: 6, level: 설계, gate: G-DESIGN, domains: [database], title: "서비스 간 작업에 보상 트랜잭션이 정의되어 있는가"}
   - {id: DI-6-02, doc: qa-data-integrity.md, ch: 6, level: 설계, gate: G-DESIGN, domains: [database], title: "이벤트 발행과 DB 커밋이 원자적인가"}
   - {id: DI-6-03, doc: qa-data-integrity.md, ch: 6, level: 코드, gate: G-PR, domains: [database], title: "소비자가 중복 수신에 대비해 멱등한가"}
@@ -49,7 +49,7 @@ items:
   - {id: FLX-1-02, doc: qa-flexibility.md, ch: 1, level: 코드, gate: G-PR, domains: [application, infra], title: "상태가 필요하면 지역 변수나 파라미터로 처리하는가"}
   - {id: FLX-1-03, doc: qa-flexibility.md, ch: 1, level: 인프라, gate: G-PR, domains: [application, infra], title: "세션과 캐시를 인메모리가 아니라 외부 저장소에 두는가"}
   - {id: FLX-1-04, doc: qa-flexibility.md, ch: 1, level: 인프라, gate: G-PR, domains: [application, infra], title: "업로드 파일을 로컬 디스크가 아니라 공유 스토리지에 두는가"}
-  - {id: FLX-2-01, doc: qa-flexibility.md, ch: 2, level: 인프라, gate: G-PR, domains: [application, infra], title: "스케줄러가 다중 인스턴스에서 중복 실행되지 않도록 막았는가"}
+  - {id: FLX-2-01, doc: qa-flexibility.md, ch: 2, level: 인프라, gate: G-PR, domains: [application, infra], defers_to: [INF-2-01, INF-2-02], title: "스케줄러가 다중 인스턴스에서 중복 실행되지 않도록 막았는가"}
   - {id: FLX-2-02, doc: qa-flexibility.md, ch: 2, level: 코드, gate: G-PR, domains: [application, infra], title: "인메모리 락으로 동시성을 제어하고 있지 않은가"}
   - {id: FLX-2-03, doc: qa-flexibility.md, ch: 2, level: 설계, gate: G-DESIGN, domains: [application, infra], title: "인메모리 캐시의 무효화가 전 인스턴스에 전파되는가"}
   - {id: FLX-4-01, doc: qa-flexibility.md, ch: 4, level: 인프라, gate: G-PR, domains: [application, infra], title: "환경별 차이가 코드가 아니라 설정으로 분리되어 있는가"}
