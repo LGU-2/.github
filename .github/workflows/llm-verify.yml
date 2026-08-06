@@ -40,15 +40,18 @@ jobs:
       - name: 범위와 기준 시점 산출          # 4단계
         id: scope
         working-directory: target
+        env:
+          # actions/checkout 은 PR ref 만 가져오므로 origin/<base_ref> 가 없을 수 있다.
+          # 이벤트가 주는 SHA 를 쓰면 merge-base 계산 없이 확정된다
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          BASE=$(git merge-base origin/${{ github.base_ref }} HEAD)
-          HEAD_SHA=${{ github.event.pull_request.head.sha }}
           echo "base=$BASE" >> $GITHUB_OUTPUT
           echo "head=$HEAD_SHA" >> $GITHUB_OUTPUT
           # 기준 저장소는 시점으로 고정한다 (qa-llm-verification.md 2.2절).
           # PR 이 갈라져 나온 시점의 점검 항목으로 판정해야, 심사 중 기준이 바뀌어
           # 고치지 않은 코드에 새 위반이 생기는 일을 막는다.
-          echo "at=$(git show -s --format=%cI $BASE)" >> $GITHUB_OUTPUT
+          echo "at=$(git show -s --format=%cI "$BASE")" >> $GITHUB_OUTPUT
 
       # --- 3단계: 체크아웃 (판정 기준) ---
       - name: 기준 저장소 common
@@ -61,7 +64,7 @@ jobs:
       - name: common 을 기준 시점으로 고정
         working-directory: common
         run: |
-          SHA=$(git rev-list -1 --before="${{ steps.scope.outputs.at }}" origin/HEAD)
+          SHA=$(git rev-list -1 --before="${{ steps.scope.outputs.at }}" HEAD)
           git checkout -q "$SHA"
           echo "common @ $SHA"
 
@@ -71,7 +74,7 @@ jobs:
       - run: pip install --quiet pyyaml
 
       # --- 5, 6단계: 앵커 규칙 매칭 ---
-      # infra 체크아웃 여부를 여기서 정한다. needs_baseline_values 가 걸리지 않으면 받지 않는다.
+      # 어떤 규칙이 걸렸는지 로그에 남긴다. 판정은 judge 스텝이 다시 계산한다
       - name: 앵커 규칙 매칭
         id: match
         run: |
@@ -80,9 +83,12 @@ jobs:
             --base ${{ steps.scope.outputs.base }} \
             --head ${{ steps.scope.outputs.head }}
 
-      # --- 10단계: 확정값이 필요할 때만 ---
-      - name: 확정값 저장소 infra
-        if: steps.match.outputs.needs_baseline == 'true'
+      # infra 는 조건 없이 받는다.
+      # needs_baseline 이 false 인 규칙(entity, api-contract, build)도 INF 항목을 켜므로,
+      # 조건부로 받으면 그 항목들이 레지스트리에서 통째로 빠진다.
+      # 빠진 항목은 UNJUDGED 로도 안 남아 아무도 사라진 줄 모른다.
+      # needs_baseline 은 확정값 문서를 프롬프트에 넣을지만 정한다 (run.py 안에서).
+      - name: 기준 저장소 infra
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.infra_repo }}
@@ -90,10 +96,9 @@ jobs:
           fetch-depth: 0
 
       - name: infra 를 기준 시점으로 고정
-        if: steps.match.outputs.needs_baseline == 'true'
         working-directory: infra
         run: |
-          SHA=$(git rev-list -1 --before="${{ steps.scope.outputs.at }}" origin/HEAD)
+          SHA=$(git rev-list -1 --before="${{ steps.scope.outputs.at }}" HEAD)
           git checkout -q "$SHA"
           echo "infra @ $SHA"
 
@@ -104,8 +109,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python common/.github/llm-verify/run.py --mode judge \
-            --backend target --common common \
-            --infra "${{ steps.match.outputs.needs_baseline == 'true' && 'infra' || '' }}" \
+            --backend target --common common --infra infra \
             --base ${{ steps.scope.outputs.base }} \
             --head ${{ steps.scope.outputs.head }} \
             --out verify-out.md

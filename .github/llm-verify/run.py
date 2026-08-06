@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from collections import defaultdict
@@ -212,6 +213,30 @@ def collect_docs(active, roots):
     return docs, missing
 
 
+def collect_baseline(infra_root, limit_bytes=400_000):
+    """
+    확정값 문서를 읽는다. 앵커 규칙이 needs_baseline_values 를 걸었을 때만 부른다.
+
+    이 문서들은 "왜 그 값인가" 를 담고 있어 크다(전체 165KB). 매번 넣으면 토큰이 낭비되고,
+    무엇보다 판정과 무관한 서술이 많아 LLM 의 주의를 흩뜨린다.
+    타임아웃 값이나 풀 크기를 확정값과 대조해야 하는 규칙에서만 넣는다.
+    """
+    if not infra_root:
+        return {}, ["infra 저장소가 없다"]
+    root = Path(infra_root) / "docs" / "system-design"
+    if not root.is_dir():
+        return {}, [f"{root} 가 없다"]
+    got, failed, total = {}, [], 0
+    for f in sorted(root.glob("*.md")):
+        text = f.read_text(encoding="utf-8", errors="replace")
+        if total + len(text) > limit_bytes:
+            failed.append(f"{f.name} (용량 상한 초과)")
+            continue
+        got[f.name] = text
+        total += len(text)
+    return got, failed
+
+
 def conflict_map(path):
     """항목 ID -> 모순 정보. unresolved 만 판정을 유보시킨다."""
     if not Path(path).is_file():
@@ -266,7 +291,7 @@ SCHEMA = {
 }
 
 
-def build_prompt(items, diff, anchor_files, absent, docs, conflicts):
+def build_prompt(items, diff, anchor_files, absent, docs, conflicts, baseline=None):
     parts = ["# 판정할 점검 항목\n"]
     for it in items:
         mark = ""
@@ -297,10 +322,47 @@ def build_prompt(items, diff, anchor_files, absent, docs, conflicts):
     for name, text in docs.items():
         parts.append(f"## {name}\n{text}")
 
+    if baseline:
+        parts.append(
+            "\n# 확정값\n"
+            "이 팀이 실제로 정한 값이다. 점검 항목 본문의 일반론과 어긋나면 **확정값이 이긴다.**\n"
+            "근거가 더 구체적이기 때문이다. 값을 대조하는 항목은 여기 적힌 수치를 기준으로 판정한다.\n"
+        )
+        for name, text in baseline.items():
+            parts.append(f"## {name}\n{text}")
+
     return "\n".join(parts)
 
 
-def call_gemini(api_key, prompt, expected_ids):
+def call_gemini(api_key, prompt, expected_ids, attempts=3):
+    """
+    일시적 실패에 재시도한다.
+
+    무료 티어는 RPM 10 이고 503 이 드물지 않다. 재시도가 없으면 한 번의 일시 실패로
+    1단계가 죽고 464건 전부가 UNJUDGED 가 된다. 그건 게이트가 없는 것과 같다.
+    응답이 왔는데 형식이 어긋난 경우는 재시도하지 않는다. 다시 불러도 같기 때문이다.
+    """
+    last = None
+    for n in range(attempts):
+        result, err = _call_once(api_key, prompt, expected_ids)
+        if result is not None:
+            return result, None
+        last = err
+        if not _retryable(err) or n == attempts - 1:
+            return None, last
+        wait = 2 ** n * 5          # 5초, 10초
+        print(f"  재시도 {n + 1}/{attempts - 1} ({err}). {wait}초 대기", file=sys.stderr)
+        time.sleep(wait)
+    return None, last
+
+
+def _retryable(err):
+    """429(한도)와 5xx(서버)만 다시 부른다. 400 이나 파싱 실패는 다시 불러도 같다."""
+    return any(s in err for s in ("HTTP 429", "HTTP 500", "HTTP 502", "HTTP 503",
+                                 "HTTP 504", "호출 실패"))
+
+
+def _call_once(api_key, prompt, expected_ids):
     body = {
         "systemInstruction": {"parts": [{"text": SYSTEM}]},
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -529,6 +591,9 @@ def main():
     anchor_patterns = sorted({p for r in rules for p in (r.get("anchors") or [])})
     anchor_files, absent, failed = read_files(args.backend, anchor_patterns)
     docs, missing_docs = collect_docs(active, roots)
+    baseline, baseline_failed = ({}, [])
+    if needs_baseline:
+        baseline, baseline_failed = collect_baseline(args.infra)
     conflicts, _ = conflict_map(Path(args.common) / ".github/llm-verify/known-conflicts.yml")
 
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -553,11 +618,14 @@ def main():
         print(f"  저장소별  {dict(by_repo)}")
         print(f"앵커 파일   읽음 {len(anchor_files)}, 부재 {len(absent)}, 실패 {len(failed)}")
         print(f"기준 문서   {len(docs)}건" + (f", 못 읽음 {missing_docs}" if missing_docs else ""))
+        print(f"확정값      " + (f"{len(baseline)}건" if needs_baseline else "불필요")
+              + (f", 못 읽음 {baseline_failed}" if baseline_failed else ""))
         print(f"모순 유보   {len([i for i in active if i in conflicts])}건")
         for s in (1, 2):
             batch = by_stage.get(s, [])
             if batch:
-                p = build_prompt(batch, diff, anchor_files if s == 1 else {}, absent, docs, conflicts)
+                p = build_prompt(batch, diff, anchor_files if s == 1 else {},
+                                 absent, docs, conflicts, baseline if s == 2 else None)
                 print(f"프롬프트 {s}단계  {len(p):,}자 (대략 {len(p)//2:,} 토큰)")
         return 0
 
@@ -571,7 +639,9 @@ def main():
             stages[2] = {"error": "1단계가 온전하지 않아 건너뜀", "complete": False, "detail": "", "n": 0}
             continue
         ids = [i["id"] for i in batch]
-        prompt = build_prompt(batch, diff, anchor_files if stage == 1 else {}, absent, docs, conflicts)
+        # 확정값은 2단계에만 넣는다. 값을 대조하는 항목(REL, INF)이 전부 거기 있다
+        prompt = build_prompt(batch, diff, anchor_files if stage == 1 else {},
+                              absent, docs, conflicts, baseline if stage == 2 else None)
         resp, err = call_gemini(api_key, prompt, ids)
         if err:
             stages[stage] = {"error": err, "complete": False, "detail": "", "n": 0}
@@ -608,7 +678,8 @@ def main():
         "stages": stages, "new": new, "existing": existing,
         "conflicting": conflicting, "insufficient": insufficient,
         "unjudged": unjudged, "counts": counts,
-        "missing_anchors": failed + missing_docs, "absent": absent, "suppressed": suppressed,
+        "missing_anchors": failed + missing_docs + baseline_failed,
+        "absent": absent, "suppressed": suppressed,
     }
     Path(args.out).write_text(render(ctx), encoding="utf-8")
     print(f"활성 {len(active)} / 판정 {len(judged)} / 위반 {len(violations)} "
