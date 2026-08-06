@@ -238,18 +238,26 @@ def collect_baseline(infra_root, limit_bytes=400_000):
 
 
 def conflict_map(path):
-    """항목 ID -> 모순 정보. unresolved 만 판정을 유보시킨다."""
+    """
+    항목 ID -> 모순 정보. 두 종류를 나눠 돌려준다.
+
+    unresolved   문서끼리 어긋난다. 판정을 유보시킨다
+    intentional  모순이 아니다. 이 팀이 일반론에서 의도적으로 벗어난 것이다
+
+    뒤엣것을 알려 주지 않으면 LLM 이 일반론만 보고 위반이라고 답한다.
+    확정값 문서에 이유와 ADR 번호까지 있는 결정을 매 PR 마다 되짚게 된다.
+    """
     if not Path(path).is_file():
-        return {}, []
+        return {}, {}
     data = load_yaml(path)
-    by_item, intentional = defaultdict(list), []
+    unresolved, intentional = defaultdict(list), defaultdict(list)
     for c in data.get("conflicts", []):
-        if c.get("status") == "unresolved":
-            for item_id in c.get("affects", []):
-                by_item[item_id].append(c)
-        elif c.get("status") == "intentional":
-            intentional.append(c)
-    return by_item, intentional
+        target = {"unresolved": unresolved, "intentional": intentional}.get(c.get("status"))
+        if target is None:
+            continue
+        for item_id in c.get("affects", []):
+            target[item_id].append(c)
+    return unresolved, intentional
 
 
 # --- 14, 15단계: LLM 호출 --------------------------------------------------
@@ -263,6 +271,8 @@ SYSTEM = """너는 웹 백엔드 코드 리뷰어다. 주어진 점검 항목 �
 4. VIOLATION 은 file 과 line 을 반드시 채운다. 못 채우면 INSUFFICIENT_EVIDENCE 다.
 5. 판정 기준은 첨부한 문서 본문이다. 항목 제목만 보고 일반론으로 판정하지 않는다.
 6. CONFLICTING_BASELINE 으로 표시된 항목은 그대로 CONFLICTING_BASELINE 으로 답하고 양쪽 값을 적는다.
+6-1. "의도된 이탈" 로 표시된 항목은 모순이 아니다. 함께 적힌 결정을 기준으로 판정한다.
+   점검 항목 본문의 일반론과 다르다는 이유로 위반이라고 답하지 않는다.
 7. 앵커 파일은 diff 에 없어도 첨부된 것이다. "저장소에 존재하지 않는 경로" 목록은
    검색 실패가 아니라 부재의 확인이므로, 무언가가 없다는 판정의 근거로 그대로 쓴다.
 8. 한국어로 답한다. reason 과 fix 는 각각 한 문장으로 쓴다.
@@ -291,7 +301,9 @@ SCHEMA = {
 }
 
 
-def build_prompt(items, diff, anchor_files, absent, docs, conflicts, baseline=None):
+def build_prompt(items, diff, anchor_files, absent, docs, conflicts,
+                 intentional=None, baseline=None):
+    intentional = intentional or {}
     parts = ["# 판정할 점검 항목\n"]
     for it in items:
         mark = ""
@@ -301,6 +313,18 @@ def build_prompt(items, diff, anchor_files, absent, docs, conflicts, baseline=No
                 for c in conflicts[it["id"]] for s in c["sources"]
             )
             mark = f"  [확정값 모순 - CONFLICTING_BASELINE 으로 답할 것] {vals}"
+        elif it["id"] in intentional:
+            # unresolved 가 먼저다. 확정값 쪽이 자기들끼리 어긋나 있으면
+            # "확정값을 기준으로 판정하라" 는 지시 자체가 성립하지 않는다.
+            # 일반론과 다른 것이 위반이 아니라 결정인 경우이므로,
+            # 확정값 쪽을 기준으로 판정하게 하고 근거와 결정 번호를 함께 준다
+            c = intentional[it["id"]][0]
+            decided = c["sources"][-1]
+            mark = ("  [의도된 이탈 - 아래 결정을 기준으로 판정할 것. "
+                    f"이 항목의 일반론을 근거로 위반이라고 답하지 말 것] "
+                    f"{decided['doc']} {decided.get('section', '')}: {decided['value']}")
+            if c.get("decision"):
+                mark += f" (결정 {c['decision']}, 되돌릴 수 없음)"
         parts.append(f"- {it['id']} ({it['level']}) {it['title']}{mark}")
 
     parts.append("\n# 변경 내용 (판정 대상)\n```diff\n" + diff + "\n```")
@@ -594,7 +618,8 @@ def main():
     baseline, baseline_failed = ({}, [])
     if needs_baseline:
         baseline, baseline_failed = collect_baseline(args.infra)
-    conflicts, _ = conflict_map(Path(args.common) / ".github/llm-verify/known-conflicts.yml")
+    conflicts, intentional = conflict_map(
+        Path(args.common) / ".github/llm-verify/known-conflicts.yml")
 
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key and not args.dry_run:
@@ -621,11 +646,16 @@ def main():
         print(f"확정값      " + (f"{len(baseline)}건" if needs_baseline else "불필요")
               + (f", 못 읽음 {baseline_failed}" if baseline_failed else ""))
         print(f"모순 유보   {len([i for i in active if i in conflicts])}건")
+        eff = [i for i in active if i in intentional and i not in conflicts]
+        shadow = [i for i in active if i in intentional and i in conflicts]
+        print(f"의도된 이탈 {len(eff)}건"
+              + (f" (모순으로 가려진 것 {len(shadow)}건: {', '.join(shadow)})" if shadow else ""))
         for s in (1, 2):
             batch = by_stage.get(s, [])
             if batch:
                 p = build_prompt(batch, diff, anchor_files if s == 1 else {},
-                                 absent, docs, conflicts, baseline if s == 2 else None)
+                                 absent, docs, conflicts, intentional,
+                                 baseline if s == 2 else None)
                 print(f"프롬프트 {s}단계  {len(p):,}자 (대략 {len(p)//2:,} 토큰)")
         return 0
 
@@ -641,7 +671,8 @@ def main():
         ids = [i["id"] for i in batch]
         # 확정값은 2단계에만 넣는다. 값을 대조하는 항목(REL, INF)이 전부 거기 있다
         prompt = build_prompt(batch, diff, anchor_files if stage == 1 else {},
-                              absent, docs, conflicts, baseline if stage == 2 else None)
+                              absent, docs, conflicts, intentional,
+                              baseline if stage == 2 else None)
         resp, err = call_gemini(api_key, prompt, ids)
         if err:
             stages[stage] = {"error": err, "complete": False, "detail": "", "n": 0}
