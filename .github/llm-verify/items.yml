@@ -13,32 +13,32 @@ items:
   - {id: CMP-3-02, doc: qa-compatibility.md, ch: 3, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "enum 대신 확장 가능한 문자열 코드를 쓸지 검토했는가"}
   - {id: CMP-3-03, doc: qa-compatibility.md, ch: 3, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "알 수 없는 enum 값 수신 시 예외 대신 안전한 기본 처리를 하는가"}
   - {id: CMP-4-01, doc: qa-compatibility.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "표준 상태 코드를 쓰는가"}
-  - {id: CMP-4-02, doc: qa-compatibility.md, ch: 4, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "기계 판독용 식별자(reason, domain)를 포함하는가"}
+  - {id: CMP-4-02, doc: qa-compatibility.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "기계 판독용 식별자(reason, domain)를 포함하는가"}
   - {id: CMP-4-03, doc: qa-compatibility.md, ch: 4, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "어떤 오류가 재시도 가능한지 정의했는가"}
   - {id: CMP-4-04, doc: qa-compatibility.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "오류 메시지가 내부 구현이나 민감 정보를 노출하지 않는가"}
   - {id: CMP-5-01, doc: qa-compatibility.md, ch: 5, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application], title: "배포와 스키마 변경이 서로를 강제하지 않는가 (한쪽만 롤백 가능한가)"}
-  - {id: CMP-5-02, doc: qa-compatibility.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "컬럼 제거를 단계로 나눴는가"}
-  - {id: CMP-5-03, doc: qa-compatibility.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "메시지 큐 이벤트에 버전이나 확장 여지가 있는가"}
-  - {id: CMP-5-04, doc: qa-compatibility.md, ch: 5, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "DDL이 온라인으로 수행 가능한지 확인했는가"}
+  - {id: CMP-5-02, doc: qa-compatibility.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], defers_to: [INF-6-01, FLX-5-01], title: "컬럼 제거를 단계로 나눴는가"}
+  - {id: CMP-5-03, doc: qa-compatibility.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "메시지 큐 이벤트에 버전이나 확장 여지가 있는가"}
+  - {id: CMP-5-04, doc: qa-compatibility.md, ch: 5, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], defers_to: [FLX-5-02], title: "DDL이 온라인으로 수행 가능한지 확인했는가"}
   - {id: CMP-6-01, doc: qa-compatibility.md, ch: 6, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "배치와 API 서버가 같은 DB 커넥션 자원을 잠식하지 않는가"}
   - {id: CMP-6-02, doc: qa-compatibility.md, ch: 6, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application], title: "대량 배치가 운영 시간대 쿼리 성능에 영향을 주지 않는가"}
-  - {id: CMP-6-03, doc: qa-compatibility.md, ch: 6, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "캐시 키 네임스페이스가 서비스별로 분리되어 있는가"}
-  - {id: CMP-7-01, doc: qa-compatibility.md, ch: 7, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "리소스와 필드 명명이 API 전체에서 일관되는가"}
+  - {id: CMP-6-03, doc: qa-compatibility.md, ch: 6, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "캐시 키 네임스페이스가 서비스별로 분리되어 있는가"}
+  - {id: CMP-7-01, doc: qa-compatibility.md, ch: 7, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "리소스와 필드 명명이 API 전체에서 일관되는가"}
   - {id: CMP-7-02, doc: qa-compatibility.md, ch: 7, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application], title: "모든 메서드, 리소스, 필드에 문서가 있는가"}
-  - {id: CMP-7-03, doc: qa-compatibility.md, ch: 7, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "오류 메시지가 해결 방향을 제시하는가"}
+  - {id: CMP-7-03, doc: qa-compatibility.md, ch: 7, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "오류 메시지가 해결 방향을 제시하는가"}
   - {id: DI-2-01, doc: qa-data-integrity.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], defers_to: [INF-1-04, INF-1-05], title: "갱신 손실 가능성이 있는 흐름에 잠금을 적용했는가"}
   - {id: DI-2-02, doc: qa-data-integrity.md, ch: 2, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [database], defers_to: [INF-1-08], title: "충돌 빈도에 맞는 잠금 방식을 골랐는가"}
-  - {id: DI-2-03, doc: qa-data-integrity.md, ch: 2, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [database], title: "잠금 획득 순서가 일정해 교착 상태(deadlock)를 유발하지 않는가"}
+  - {id: DI-2-03, doc: qa-data-integrity.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], title: "잠금 획득 순서가 일정해 교착 상태(deadlock)를 유발하지 않는가"}
   - {id: DI-2-04, doc: qa-data-integrity.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], title: "낙관적 잠금 실패 시의 처리(재시도 또는 안내)가 정의되어 있는가"}
-  - {id: DI-3-01, doc: qa-data-integrity.md, ch: 3, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [database], title: "유일성이 필요한 값에 UNIQUE 제약이 있는가"}
-  - {id: DI-3-02, doc: qa-data-integrity.md, ch: 3, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [database], title: "값 범위 규칙이 CHECK 제약으로도 표현되어 있는가"}
-  - {id: DI-3-03, doc: qa-data-integrity.md, ch: 3, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [database], title: "참조 무결성이 필요한 곳에 외래 키가 있는가"}
-  - {id: DI-3-04, doc: qa-data-integrity.md, ch: 3, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [database], title: "NOT NULL이 필요한 컬럼에 지정되어 있는가"}
-  - {id: DI-4-01, doc: qa-data-integrity.md, ch: 4, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [database], title: "트랜잭션 범위가 비즈니스 단위와 일치하는가"}
+  - {id: DI-3-01, doc: qa-data-integrity.md, ch: 3, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], title: "유일성이 필요한 값에 UNIQUE 제약이 있는가"}
+  - {id: DI-3-02, doc: qa-data-integrity.md, ch: 3, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], title: "값 범위 규칙이 CHECK 제약으로도 표현되어 있는가"}
+  - {id: DI-3-03, doc: qa-data-integrity.md, ch: 3, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], title: "참조 무결성이 필요한 곳에 외래 키가 있는가"}
+  - {id: DI-3-04, doc: qa-data-integrity.md, ch: 3, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], title: "NOT NULL이 필요한 컬럼에 지정되어 있는가"}
+  - {id: DI-4-01, doc: qa-data-integrity.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], title: "트랜잭션 범위가 비즈니스 단위와 일치하는가"}
   - {id: DI-4-02, doc: qa-data-integrity.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], title: "트랜잭션 안에서 외부 API를 호출하지 않는가"}
   - {id: DI-4-03, doc: qa-data-integrity.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], defers_to: [INF-1-07], title: "트랜잭션이 필요 이상으로 길지 않은가"}
   - {id: DI-6-01, doc: qa-data-integrity.md, ch: 6, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [database], title: "서비스 간 작업에 보상 트랜잭션이 정의되어 있는가"}
-  - {id: DI-6-02, doc: qa-data-integrity.md, ch: 6, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [database], title: "이벤트 발행과 DB 커밋이 원자적인가"}
+  - {id: DI-6-02, doc: qa-data-integrity.md, ch: 6, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], title: "이벤트 발행과 DB 커밋이 원자적인가"}
   - {id: DI-6-03, doc: qa-data-integrity.md, ch: 6, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database], title: "소비자가 중복 수신에 대비해 멱등한가"}
   - {id: DI-6-04, doc: qa-data-integrity.md, ch: 6, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [database, infra], title: "처리 실패한 메시지가 유실되지 않고 격리되는가 (DLQ)"}
   - {id: DI-7-01, doc: qa-data-integrity.md, ch: 7, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [database], title: "주기적 정합성 검사가 실행되는가"}
@@ -51,24 +51,24 @@ items:
   - {id: FLX-1-04, doc: qa-flexibility.md, ch: 1, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "업로드 파일을 로컬 디스크가 아니라 공유 스토리지에 두는가"}
   - {id: FLX-2-01, doc: qa-flexibility.md, ch: 2, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], defers_to: [INF-2-01, INF-2-02], title: "스케줄러가 다중 인스턴스에서 중복 실행되지 않도록 막았는가"}
   - {id: FLX-2-02, doc: qa-flexibility.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "인메모리 락으로 동시성을 제어하고 있지 않은가"}
-  - {id: FLX-2-03, doc: qa-flexibility.md, ch: 2, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "인메모리 캐시의 무효화가 전 인스턴스에 전파되는가"}
+  - {id: FLX-2-03, doc: qa-flexibility.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "인메모리 캐시의 무효화가 전 인스턴스에 전파되는가"}
   - {id: FLX-4-01, doc: qa-flexibility.md, ch: 4, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "환경별 차이가 코드가 아니라 설정으로 분리되어 있는가"}
   - {id: FLX-4-02, doc: qa-flexibility.md, ch: 4, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "설정과 비밀정보가 소스에 하드코딩되어 있지 않은가"}
-  - {id: FLX-4-03, doc: qa-flexibility.md, ch: 4, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "외부 의존이 추상화 뒤에 있어 교체 가능한가"}
-  - {id: FLX-5-01, doc: qa-flexibility.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "컬럼 제거를 4단계로 나눴는가"}
+  - {id: FLX-4-03, doc: qa-flexibility.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "외부 의존이 추상화 뒤에 있어 교체 가능한가"}
+  - {id: FLX-5-01, doc: qa-flexibility.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], defers_to: [INF-6-01], title: "컬럼 제거를 4단계로 나눴는가"}
   - {id: FLX-5-02, doc: qa-flexibility.md, ch: 5, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "대용량 테이블 DDL이 온라인으로 수행 가능한지 확인했는가"}
-  - {id: FLX-5-03, doc: qa-flexibility.md, ch: 5, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "스키마 변경 후에도 이전 버전 코드로 롤백 가능한가"}
+  - {id: FLX-5-03, doc: qa-flexibility.md, ch: 5, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application, infra], defers_to: [CMP-5-01], title: "스키마 변경 후에도 이전 버전 코드로 롤백 가능한가"}
   - {id: FUN-2-01, doc: qa-functional-suitability.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "외부 호출이 실패했을 때의 흐름이 구현되어 있는가"}
   - {id: FUN-2-02, doc: qa-functional-suitability.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "실패 시 이미 만들어진 데이터가 불일치 상태로 남지 않는가"}
   - {id: FUN-2-03, doc: qa-functional-suitability.md, ch: 2, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "부분 성공 상태를 표현할 수 있는가"}
-  - {id: FUN-2-04, doc: qa-functional-suitability.md, ch: 2, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "결과를 모르는 상태(타임아웃)를 실패와 구분하는가"}
+  - {id: FUN-2-04, doc: qa-functional-suitability.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "결과를 모르는 상태(타임아웃)를 실패와 구분하는가"}
   - {id: FUN-3-01, doc: qa-functional-suitability.md, ch: 3, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "빈 입력, null, 0, 음수, 최대값을 처리하는가"}
   - {id: FUN-3-02, doc: qa-functional-suitability.md, ch: 3, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "나눗셈 앞에 분모가 0이 될 가능성을 확인했는가"}
   - {id: FUN-3-03, doc: qa-functional-suitability.md, ch: 3, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "페이지 크기, 조회 건수 등에 상한이 있는가"}
   - {id: FUN-3-04, doc: qa-functional-suitability.md, ch: 3, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "상한을 클라이언트가 아니라 서버가 강제하는가"}
   - {id: FUN-4-01, doc: qa-functional-suitability.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "금액 계산에 float, double을 쓰지 않는가"}
-  - {id: FUN-4-02, doc: qa-functional-suitability.md, ch: 4, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "반올림 정책(자리수, 모드)을 명시했는가"}
-  - {id: FUN-4-03, doc: qa-functional-suitability.md, ch: 4, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application], title: "DB 컬럼 타입이 애플리케이션 타입과 정밀도가 맞는가"}
+  - {id: FUN-4-02, doc: qa-functional-suitability.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "반올림 정책(자리수, 모드)을 명시했는가"}
+  - {id: FUN-4-03, doc: qa-functional-suitability.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "DB 컬럼 타입이 애플리케이션 타입과 정밀도가 맞는가"}
   - {id: FUN-4-04, doc: qa-functional-suitability.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "총액을 여러 항목에 배분할 때 배분액의 합이 총액과 일치하는가"}
   - {id: FUN-5-01, doc: qa-functional-suitability.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "조회처럼 보이는 메서드가 상태를 바꾸지 않는가"}
   - {id: FUN-5-02, doc: qa-functional-suitability.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application], title: "반환값이 없는 메서드의 성공 여부를 호출자가 알 수 있는가"}
@@ -89,11 +89,11 @@ items:
   - {id: INC-4-02, doc: qa-incident-response.md, ch: 4, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [infra], title: "분산 락에 만료 시간이 있어 급사한 인스턴스가 락을 영구 점유하지 않는가"}
   - {id: INC-4-03, doc: qa-incident-response.md, ch: 4, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [infra], title: "처리 중이던 메시지가 확인되지 않으면 재전달되는가"}
   - {id: INC-4-04, doc: qa-incident-response.md, ch: 4, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [infra], title: "승격 절차가 문서화되어 있고 실제로 연습해 보았는가"}
-  - {id: INC-4-05, doc: qa-incident-response.md, ch: 4, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [infra], title: "split brain을 막는 장치(펜싱, 쿼럼)가 있는가"}
+  - {id: INC-4-05, doc: qa-incident-response.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [infra], title: "split brain을 막는 장치(펜싱, 쿼럼)가 있는가"}
   - {id: INC-4-06, doc: qa-incident-response.md, ch: 4, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [infra], title: "쓰기 대상 전환이 배포 없이 가능한가"}
   - {id: INC-4-07, doc: qa-incident-response.md, ch: 4, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [infra], title: "손실 구간을 특정하는 방법이 정해져 있는가"}
   - {id: INC-5-01, doc: qa-incident-response.md, ch: 5, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [infra], title: "이전 버전으로 되돌리는 데 걸리는 시간을 알고 있는가"}
-  - {id: INC-5-02, doc: qa-incident-response.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [infra], title: "스키마 변경이 코드 롤백을 막고 있지 않은가"}
+  - {id: INC-5-02, doc: qa-incident-response.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [infra], title: "스키마 변경이 코드 롤백을 막고 있지 않은가"}
   - {id: INC-5-03, doc: qa-incident-response.md, ch: 5, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [infra], title: "롤백 결정 권한이 누구에게 있는지 명확한가"}
   - {id: INC-6-01, doc: qa-incident-response.md, ch: 6, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [infra], title: "기동 후 트래픽을 단계적으로 유입시킬 수 있는가"}
   - {id: INC-6-02, doc: qa-incident-response.md, ch: 6, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [infra], title: "큐 소비 속도에 상한이 있는가"}
@@ -137,7 +137,7 @@ items:
   - {id: OBS-4-04, doc: qa-observability.md, ch: 4, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "수집 주기와 보존 기간이 정의되어 있는가"}
   - {id: OBS-5-01, doc: qa-observability.md, ch: 5, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "서비스 간 호출에 추적 컨텍스트가 전파되는가"}
   - {id: OBS-5-02, doc: qa-observability.md, ch: 5, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "DB 쿼리와 외부 호출이 스팬으로 기록되는가"}
-  - {id: OBS-5-03, doc: qa-observability.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "샘플링 정책이 정의되어 있는가"}
+  - {id: OBS-5-03, doc: qa-observability.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "샘플링 정책이 정의되어 있는가"}
   - {id: OBS-5-04, doc: qa-observability.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "비동기 실행에서 추적 컨텍스트가 끊기지 않는가"}
   - {id: OBS-6-01, doc: qa-observability.md, ch: 6, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "주요 기능에 SLI와 SLO가 숫자로 정의되어 있는가"}
   - {id: OBS-6-02, doc: qa-observability.md, ch: 6, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "알림이 원인이 아니라 증상(사용자 영향) 기준인가"}
@@ -151,7 +151,7 @@ items:
   - {id: PERF-1-03, doc: qa-performance-efficiency.md, ch: 1, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "목표를 부하 테스트로 검증했는가"}
   - {id: PERF-2-01, doc: qa-performance-efficiency.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "컬렉션 조회 후 루프에서 연관 엔티티에 접근하지 않는가 (N+1)"}
   - {id: PERF-2-02, doc: qa-performance-efficiency.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "목록 조회에서 건별 집계 쿼리를 반복하지 않는가"}
-  - {id: PERF-2-03, doc: qa-performance-efficiency.md, ch: 2, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "조회 조건에 맞는 인덱스가 있고 실제로 타는가"}
+  - {id: PERF-2-03, doc: qa-performance-efficiency.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "조회 조건에 맞는 인덱스가 있고 실제로 타는가"}
   - {id: PERF-2-04, doc: qa-performance-efficiency.md, ch: 2, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "슬로우 쿼리를 정기적으로 확인하는가"}
   - {id: PERF-4-01, doc: qa-performance-efficiency.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "반복문 안에서 반복마다 같은 연산을 다시 하지 않는가"}
   - {id: PERF-4-02, doc: qa-performance-efficiency.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "조회 패턴에 맞는 자료구조를 쓰는가"}
@@ -159,8 +159,8 @@ items:
   - {id: PERF-4-04, doc: qa-performance-efficiency.md, ch: 4, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "힙 크기와 GC 설정이 데이터 규모에 맞는가"}
   - {id: PERF-5-01, doc: qa-performance-efficiency.md, ch: 5, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "캐시 도입 전에 쿼리와 인덱스 개선을 먼저 시도했는가"}
   - {id: PERF-5-02, doc: qa-performance-efficiency.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "무효화 시점이 명확한가"}
-  - {id: PERF-5-03, doc: qa-performance-efficiency.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "캐시 미스 폭주(cache stampede)에 대비했는가"}
-  - {id: PERF-5-04, doc: qa-performance-efficiency.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "캐시가 죽어도 서비스가 동작하는가"}
+  - {id: PERF-5-03, doc: qa-performance-efficiency.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "캐시 미스 폭주(cache stampede)에 대비했는가"}
+  - {id: PERF-5-04, doc: qa-performance-efficiency.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "캐시가 죽어도 서비스가 동작하는가"}
   - {id: PERF-6-01, doc: qa-performance-efficiency.md, ch: 6, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "주요 릴리스 전에 부하 테스트를 수행하는가"}
   - {id: PERF-6-02, doc: qa-performance-efficiency.md, ch: 6, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "운영과 유사한 데이터 규모에서 검증하는가"}
   - {id: PERF-6-03, doc: qa-performance-efficiency.md, ch: 6, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application, database, infra], title: "한계점(포화 지점)을 알고 있는가"}
@@ -168,13 +168,13 @@ items:
   - {id: REL-1-02, doc: qa-reliability.md, ch: 1, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "목표가 백분위수와 기간을 포함한 문장으로 적혀 있는가"}
   - {id: REL-1-03, doc: qa-reliability.md, ch: 1, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "목표 대비 실적을 정기적으로 확인하는 자리가 있는가"}
   - {id: REL-2-01, doc: qa-reliability.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "모든 외부 호출에 연결 타임아웃과 읽기 타임아웃이 설정되어 있는가"}
-  - {id: REL-2-02, doc: qa-reliability.md, ch: 2, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "타임아웃 값이 상위 호출자의 타임아웃보다 짧은가 (타임아웃 예산 배분)"}
+  - {id: REL-2-02, doc: qa-reliability.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "타임아웃 값이 상위 호출자의 타임아웃보다 짧은가 (타임아웃 예산 배분)"}
   - {id: REL-2-03, doc: qa-reliability.md, ch: 2, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "DB 커넥션 획득과 쿼리 실행에도 타임아웃이 있는가"}
-  - {id: REL-2-04, doc: qa-reliability.md, ch: 2, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "재시도 대상 연산이 멱등한가"}
+  - {id: REL-2-04, doc: qa-reliability.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "재시도 대상 연산이 멱등한가"}
   - {id: REL-2-05, doc: qa-reliability.md, ch: 2, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "재시도 가능한 오류와 불가능한 오류를 구분했는가"}
   - {id: REL-2-06, doc: qa-reliability.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "재시도 간격에 지수 백오프와 지터를 적용했는가"}
   - {id: REL-2-07, doc: qa-reliability.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "재시도 횟수에 상한이 있는가"}
-  - {id: REL-2-08, doc: qa-reliability.md, ch: 2, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "재시도 총 소요 시간이 상위 타임아웃 예산 안에 들어오는가"}
+  - {id: REL-2-08, doc: qa-reliability.md, ch: 2, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "재시도 총 소요 시간이 상위 타임아웃 예산 안에 들어오는가"}
   - {id: REL-2-09, doc: qa-reliability.md, ch: 2, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "실패율이 임계치를 넘으면 호출을 끊고 빠르게 실패하는가"}
   - {id: REL-2-10, doc: qa-reliability.md, ch: 2, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "외부 연동별로 스레드풀 또는 커넥션풀이 분리되어 있는가"}
   - {id: REL-2-11, doc: qa-reliability.md, ch: 2, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "차단 상태에서의 대체 동작(fallback)이 정의되어 있는가"}
@@ -191,7 +191,7 @@ items:
   - {id: REL-5-01, doc: qa-reliability.md, ch: 5, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "헬스체크가 의존 컴포넌트 상태를 반영하는가"}
   - {id: REL-5-02, doc: qa-reliability.md, ch: 5, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "기동 완료 전에 트래픽을 받지 않는가 (readiness와 liveness 분리)"}
   - {id: REL-5-03, doc: qa-reliability.md, ch: 5, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "종료 시 처리 중인 요청을 마치고 내려가는가 (graceful shutdown)"}
-  - {id: REL-5-04, doc: qa-reliability.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "liveness가 외부 의존성 상태에 좌우되지 않는가"}
+  - {id: REL-5-04, doc: qa-reliability.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [application, infra], title: "liveness가 외부 의존성 상태에 좌우되지 않는가"}
   - {id: SEC-1-01, doc: qa-security.md, ch: 1, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security], title: "리소스 접근 시 소유권 또는 권한을 검증하는가"}
   - {id: SEC-1-02, doc: qa-security.md, ch: 1, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security], title: "검증을 클라이언트가 보낸 식별자가 아니라 인증 주체 기준으로 하는가"}
   - {id: SEC-1-03, doc: qa-security.md, ch: 1, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security], title: "목록 조회에서도 소유자 조건이 쿼리에 포함되는가"}
@@ -208,13 +208,13 @@ items:
   - {id: SEC-4-02, doc: qa-security.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security], title: "로그와 예외 메시지에 개인정보, 인증 토큰, 쿼리 원문이 남지 않는가"}
   - {id: SEC-4-03, doc: qa-security.md, ch: 4, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security], title: "응답 DTO가 엔티티를 그대로 노출하지 않는가"}
   - {id: SEC-4-04, doc: qa-security.md, ch: 4, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [security], title: "저장 시 암호화가 필요한 항목을 등급으로 구분했는가"}
-  - {id: SEC-5-01, doc: qa-security.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [security], title: "상태 변경 이력에 변경 주체가 기록되는가"}
-  - {id: SEC-5-02, doc: qa-security.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [security], title: "관리자 행위에 감사 로그가 남는가"}
+  - {id: SEC-5-01, doc: qa-security.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security], title: "상태 변경 이력에 변경 주체가 기록되는가"}
+  - {id: SEC-5-02, doc: qa-security.md, ch: 5, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security], title: "관리자 행위에 감사 로그가 남는가"}
   - {id: SEC-5-03, doc: qa-security.md, ch: 5, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security], title: "이력이 애플리케이션에서 삭제되지 않도록 보호되는가"}
   - {id: SEC-5-04, doc: qa-security.md, ch: 5, level: 프로세스, gate: G-AUDIT, gates: [local, ci], ci_stage: 2, domains: [security], title: "감사 로그를 정기적으로 검토하는가"}
   - {id: SEC-6-01, doc: qa-security.md, ch: 6, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security, infra], title: "로그인, 인증번호 발송 등에 시도 횟수 제한이 있는가"}
   - {id: SEC-6-02, doc: qa-security.md, ch: 6, level: 인프라, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security, infra], title: "IP 또는 계정 단위 레이트 리밋이 있는가"}
-  - {id: SEC-6-03, doc: qa-security.md, ch: 6, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [security], title: "대량 조회 API에 상한과 인증이 걸려 있는가"}
+  - {id: SEC-6-03, doc: qa-security.md, ch: 6, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security], title: "대량 조회 API에 상한과 인증이 걸려 있는가"}
   - {id: SEC-6-04, doc: qa-security.md, ch: 6, level: 코드, gate: G-PR, gates: [local, ci], ci_stage: 2, domains: [security], title: "인증 실패 응답이 계정 존재 여부를 구분해서 알려 주지 않는가"}
   - {id: TRD-5-01, doc: qa-tradeoffs.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, security, database, infra], title: "이 확장점을 쓸 두 번째 구현이 실제로 예상되는가"}
   - {id: TRD-5-02, doc: qa-tradeoffs.md, ch: 5, level: 설계, gate: G-DESIGN, gates: [local, ci], ci_stage: 2, domains: [application, security, database, infra], title: "지금 없는 요구를 위해 인터페이스를 만들고 있지 않은가"}
