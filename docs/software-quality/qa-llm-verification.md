@@ -122,7 +122,7 @@ LLM 게이트보다 먼저 도는 결정론적 게이트다. 7.1절의 G1 등급
 
 **둘 중 하나라도 실패하면 병합을 차단한다.** 브랜치 보호의 필수 상태 검사가 강제 수단이다.
 
-점검 항목과 Gradle 설정은 `LGU-2/infra`의 `docs/infra-review/code-guideline.md` 10장에 있다 (`INF-10-*`).
+점검 항목과 Gradle 설정은 `LGU-2/be`의 `docs/code-architecture/build-gate-guideline.md`에 있다 (`BLD-*`).
 
 **두 게이트의 판정 주체를 분리한 것이 중요하다.**
 SonarQube Quality Gate에서 커버리지 조건을 제거하고 Gradle이 판정한다.

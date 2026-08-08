@@ -66,7 +66,8 @@ CI_STAGE = {"backend": 1, "common": 2, "infra": 2}
 
 # 어느 영역의 관심사인가. 판정에 쓰지 않고 집계와 검색에 쓴다
 DOMAINS = {
-    "API": ["application"], "BE": ["database"], "CMP": ["application"],
+    "API": ["application"], "BE": ["database"], "BLD": ["application"],
+    "CMP": ["application"],
     "DI": ["database"], "DPB": ["application"], "EC": ["application", "database"],
     "EJ": ["application"], "FLX": ["application", "infra"], "FUN": ["application"],
     "IDS": ["database", "security"], "INC": ["infra"], "INF": ["application", "infra"],
